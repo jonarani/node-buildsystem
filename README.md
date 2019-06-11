@@ -9,12 +9,12 @@ $ git submodule add git@bitbucket.org:thinnect/buildsystem.git thinnect.buildsys
 $ cp thinnect.buildsystem/make/Makefile.sample Makefile
 ```
 
-Edit Makefile and add your own sources (.c files) to variable SOURCES.
+Edit Makefile and
+* Add your own sources (.c files) to variable SOURCES
+* Add your own include directories to variable INCLUDES
+* Add your header file locations to variable ALL_HEADERS_EVER
+* Set your version in VERSION_xxx variables
+* Set your application UUID in variable UUID_APPLICATION
+* Update make targets to make sense for your application
 
-Update targets where needed.
-
-
-<<<<<<< HEAD
-A build system for embedded projects
-=======
->>>>>>> DEV-2155 Verbatim copy of build system from git@bitbucket.org:thinnect/silabs_bootloader.git
+Try to make your target. Fix errors or complain to author.
