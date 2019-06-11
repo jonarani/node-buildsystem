@@ -1,0 +1,256 @@
+# Here we do the dirty work of the TinyOS-like make rule processing.
+
+# _______________________ Debugging output _______________________
+
+PRINT_INFO               := $(if $(filter $(strip $(SILENT)),1 yes Yes YES true True TRUE),,yes)
+PRINT_DEBUG              := $(if $(and $(filter $(PRINT_INFO),yes),$(filter $(strip $(VERBOSE)),1 yes Yes YES true True TRUE)),yes,)
+PINFO_AFFIX              := ===
+PDBG_AFFIX               := ---
+
+pDbg = $(if $(PRINT_DEBUG),$(info $(PDBG_AFFIX) $(1) $(PDBG_AFFIX)),)
+pInfo = $(if $(PRINT_INFO),$(info $(PINFO_AFFIX) $(1) $(PINFO_AFFIX)),)
+
+
+# _______________________ Platform functions _______________________
+
+# Include a target definition
+#   @param $(1) Name of the target file (without extension)
+#   @return Nothing
+includeTarget = $(eval $(call includeTargetDefine,$(1)))
+define includeTargetDefine
+$(call pDbg,Including target definition [$(TARGETS_DIR)/$(1).target])
+$(eval include $(TARGETS_DIR)/$(1).target)
+endef
+
+# Include a board definition
+#   @param $(1) Name of the board file (without extension)
+#   @return Nothing
+includeBoard = $(eval $(call includeBoardDefine,$(1)))
+define includeBoardDefine
+$(call pDbg,Including board definition [$(BOARDS_DIR)/$(1).board])
+$(eval include $(BOARDS_DIR)/$(1).board)
+endef
+
+# Include an architecture definition
+#   @param $(1) Name of the architecture file (without extension)
+#   @return Nothing
+includeArch = $(eval $(call includeArchDefine,$(1)))
+define includeArchDefine
+$(call pDbg,Including architecture definition [$(ARCHITECTURES_DIR)/$(1).arch])
+$(eval include $(ARCHITECTURES_DIR)/$(1).arch)
+endef
+
+# Pass a make variable named $(1) to the C preprocessor by storing its
+# name and value with the classic -DFOO='BAR' construct into variable $(2).
+# If the make variable $(1) isn't defined, nothing is passed.
+# E.g. assuming variable FOOBAR is defined and set to "0x1234llu", call to
+# $(call passVarToCpp,CFLAGS,FOOBAR) results in executing make statement:
+# CLAGS += -DFOOBAR='0x1234llu'
+#   @param $(1) Name of a make variable holding C preprocessor flags (e.g. CFLAGS)
+#   @param $(2) Name of a make variable to be passed to CPP (e.g. MY_BUILD_CONST)
+#   @return Nothing
+passVarToCpp = $(eval $(call passVarToCppDefine,$(1),$(2)))
+define passVarToCppDefine =
+ifdef $(2)
+  $$(call pDbg,$(1) += $(2)='$($(2))')
+  $(1) += -D$(2)='$($(2))'
+else
+  $$(call pDbg,$(1) unchanged ($(2) not defined))
+endif
+endef
+
+# Convert a canonical UUID to a C string representation of raw bytes
+#   @param $(1) Canonical UUID (nnnnnnnn-nnnn-nnnn-nnnn-nnnnnnnnnnnn)
+#   @return C-style string with each character as a raw hex byte ("\xNN\xNN...\xNN")
+uuidToCstr = $(shell echo $(subst -,,$(1)) | $(SED) 's/.\{2\}/\\x&/g')
+
+
+# _______________________ Command line processing _______________________
+
+# Generate list of valid build targets
+SUPPORTED_TARGET_NAMES   := $(patsubst $(TARGETS_DIR)/%.target,%,$(wildcard $(TARGETS_DIR)/*.target))
+
+# Basic validation for entire command line
+#   @param $(1) Command line to be validated
+#   @return "true" if command line is sane, empty string otherwise.
+define sanityCheckCommandLine
+$(if $(strip $(1)),true,)
+endef
+
+define isSupportedTarget
+$(filter $(strip $(1)),$(SUPPORTED_TARGET_NAMES))
+endef
+
+define isTargetlessGoal
+$(filter $(strip $(1)),$(TARGETLESS_GOALS))
+endef
+
+# Validate the first goal on the command line (must be either a valid target
+# or a targetless goal)
+#   @param $(1) The primary goal
+#   @return "true" if goal is valid, empty string otherwise.
+define validatePrimaryGoal
+$(if $(and $(strip $(1)),$(or $(call isSupportedTarget,$(1)),$(call isTargetlessGoal,$(1)))),true,)
+endef
+
+#   @return Number of goals on command line
+define countCommandWords
+$(words $(strip $(1)))
+endef
+
+define getTarget
+$(strip $(word 1,$(1)))
+endef
+
+define getAction
+$(strip $(word 2,$(1)))
+endef
+
+define getActionArgs
+$(wordlist 3,100,$(1))
+endef
+
+# Help message
+define USAGE_MSG :=
+
+Usage:
+  make TARGET [ ACTION [ ACTION_ARGS ] ]
+    Performs some action for chosen target
+    TARGET      - target platform <$(SUPPORTED_TARGET_NAMES)>
+    ACTION      - action to perform on target <install|reset>. If omitted, builds all.
+    ARGS        - arguments for the action
+
+  make clean
+    Deletes the entire build tree and all other generated files
+
+Example:
+    make fp1
+    make fp1 install 12
+    make clean
+
+endef
+
+# Extract the command line and its attributes
+CMD_LINE                 := $(MAKECMDGOALS)
+CMD_WORD_COUNT           := $(call countCommandWords,$(CMD_LINE))
+
+# Debug the crap out of the command line
+$(call pDbg,Supported targets [$(SUPPORTED_TARGET_NAMES)])
+$(call pDbg,Targetless targets [$(TARGETLESS_GOALS)])
+$(call pDbg,Command line [$(CMD_LINE)])
+$(call pDbg,Words [$(CMD_WORD_COUNT)])
+$(call pDbg,Target [$(call getTarget,$(CMD_LINE))])
+$(call pDbg,Action [$(call getAction,$(CMD_LINE))])
+$(call pDbg,ActionArgs [$(call getActionArgs,$(CMD_LINE))])
+$(call pDbg,Command line [$(CMD_LINE)] sane: [$(call sanityCheckCommandLine,$(CMD_LINE))])
+
+# Validate command line
+ifneq ($(call sanityCheckCommandLine,$(CMD_LINE)),true)
+  # Bad command line. Die emitting the help message.
+  $(info $(USAGE_MSG))
+  $(error Please specify a target from [$(SUPPORTED_TARGET_NAMES)] or action from [$(TARGETLESS_GOALS)])
+endif
+
+# Extract and validate primary goal
+BUILD_TARGET := $(call getTarget,$(CMD_LINE))
+$(call pDbg,Primary goal [$(BUILD_TARGET)] valid: [$(call validatePrimaryGoal,$(BUILD_TARGET))])
+ifneq ($(call validatePrimaryGoal,$(BUILD_TARGET)),true)
+  # Bad primary goal. Die.
+  $(error Invalid target [$(BUILD_TARGET)]. Please specify a target [$(SUPPORTED_TARGET_NAMES)] or action [$(TARGETLESS_GOALS)])
+endif
+
+# Branch for targetless and targeted goals
+ifneq ($(call isTargetlessGoal,$(BUILD_TARGET)),)
+  # Handle targetless goals
+  ifeq ($(CMD_WORD_COUNT),1)
+    $(call pDbg,Goal [$(BUILD_TARGET)] is targetless [$(TARGETLESS_GOALS)])
+    # Deactivate the "$(BUILD_TARGET): $(BUILD_ACTION)" rule
+    BUILD_TARGET :=
+  else
+    $(error Expecting one targetless goal in [$(TARGETLESS_GOALS)] and nothing else)
+  endif
+else ifneq ($(call isSupportedTarget,$(BUILD_TARGET)),)
+  # Handle build goals
+  $(call pDbg,Goal $(BUILD_TARGET) is a build target)
+  ifeq ($(CMD_WORD_COUNT),1)
+    # make target - -
+    BUILD_ACTION := combo
+    $(call pDbg,Action not specified. Picking default action [$(BUILD_ACTION)])
+  else ifeq ($(CMD_WORD_COUNT),2)
+    # make target action -
+    BUILD_ACTION := $(call getAction,$(CMD_LINE))
+    $(call pDbg,Action specified: [$(BUILD_ACTION)])
+  else ifeq ($(CMD_WORD_COUNT),3)
+    # make target action action_arg
+    BUILD_ACTION := $(call getAction,$(CMD_LINE))
+    BUILD_ACTION_ARGUMENTS := $(call getActionArgs,$(CMD_LINE))
+    $(call pDbg,Action specified: [$(BUILD_ACTION)] argument specified: [$(BUILD_ACTION_ARGUMENTS)])
+    # Match the action with its argument
+    ifneq ($(filter install program reboot reset,$(BUILD_ACTION)),)
+      PROGRAMMER_ARGUMENT := $(BUILD_ACTION_ARGUMENTS)
+    else
+      $(error Unknown argument [$(BUILD_ACTION_ARGUMENTS)] or action [$(BUILD_ACTION)])
+    endif
+  else
+    $(error Too many arguments [$(CMD_WORD_COUNT)]. Dazed and confused!)
+  endif
+  # Pull in the target, board and architecture definitions
+  $(call includeTarget,$(BUILD_TARGET))
+else
+  # Neither targetless nor build goal. Bad validation?
+  $(error Unsupported target [$(BUILD_TARGET)]. Supported are: [$(SUPPORTED_TARGET_NAMES)])
+endif
+
+$(call pDbg,Primary goal: [$(BUILD_ACTION)])
+
+
+# _______________________ Make rules _______________________
+
+# When a command line specifies both a build target and action goals
+# (e.g. make murp0 program), we only need to execute the action goal.
+# The target goal is required to include the target, board and architecture
+# files, but should trigger no recipes. The rule below is a dummy recipe to do
+# that.
+# If the command only specifies a targetless action goal (clean, help)
+# then variable BUILD_TARGET should be empty.
+$(BUILD_TARGET): $(BUILD_ACTION)
+	$(call pDbg,Completed action [$^] for target [$@])
+
+# Build action argument is still a target for make, so execute a NOP
+$(BUILD_ACTION_ARGUMENTS):
+	@true
+
+help:
+	$(info $(USAGE_MSG))
+	@true
+
+# Declare all internal crud as phony targets, or make will try to execute them
+.PHONY: $(BUILD_TARGET) $(BUILD_ACTION) $(BUILD_ACTION_ARGUMENTS) help
+
+TARGETLESS_GOALS        += help
+
+# _______________________ Define preprocessor constants _______________________
+
+# Pass any of the make variables defined below to the C preprocessor as
+# constants. Each line is equivalent to:
+# ifdef FOOBAR
+#   CFLAGS += -DFOOBAR='$(FOOBAR)'
+# endif
+
+$(call passVarToCpp,CFLAGS,BOOTLOADER_START)
+$(call passVarToCpp,CFLAGS,STAGE1_START)
+$(call passVarToCpp,CFLAGS,STAGE1_MAX_LEN)
+$(call passVarToCpp,CFLAGS,STAGE2_START)
+$(call passVarToCpp,CFLAGS,STAGE2_MAX_LEN)
+$(call passVarToCpp,CFLAGS,RAM2PGM_START)
+$(call passVarToCpp,CFLAGS,RAM2PGM_MAX_LEN)
+$(call passVarToCpp,CFLAGS,APP_START)
+$(call passVarToCpp,CFLAGS,APP_MAX_LEN)
+$(call passVarToCpp,CFLAGS,SLOW_WRITE_START)
+$(call passVarToCpp,CFLAGS,MCU_LOCK_BITS)
+
+$(call passVarToCpp,CFLAGS,DEBUG_UART_BAUD)
+$(call passVarToCpp,CFLAGS,THINBOOT_VERSION)
+$(call passVarToCpp,CFLAGS,THINBOOT_TIMESTAMP)
+$(call passVarToCpp,CFLAGS,TRACE_VERBOSITY)
+

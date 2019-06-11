@@ -1,0 +1,195 @@
+# This is the main makefile for Thinnect's Silabs bootloader.
+# Command-line interface is loosely copied from the TinyOS make system:
+# http://tinyos.stanford.edu/tinyos-wiki/index.php/TinyOS_Toolchain
+
+# _______________________ User overridable configuration _______________________
+
+include support/make/targets/fp1.target
+
+VERSION_MAJOR ?= 0
+VERSION_MINOR ?= 2
+VERSION_PATCH ?= 3
+
+HEADEREDIT              := headeredit
+
+# Destination for build results
+BUILD_BASE_DIR          := build
+
+# Common build options
+CFLAGS                  += -Os -g -Wall -std=c99 -specs=nano.specs -specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -fsingle-precision-constant -Wstrict-aliasing=0 -D__START=main -D__STARTUP_CLEAR_BSS
+LDFLAGS                 += -nostartfiles -Wl,--gc-sections -Wl,--relax -Wl,-Map=$(@:.elf=.map),--cref -Wl,--wrap=atexit
+LDLIBS                  += -lgcc
+INCLUDES                += -Xassembler -I$(BUILD_DIR) -Ilib
+
+# Enable debug messages
+VERBOSE                  ?= 0
+# Disable info messages
+#SILENT                   ?= 1
+
+# Silabs SDK location and version
+SILABS_SDKDIR           ?= silabs.sdk/v2.5
+FILENAME_PREFIX         ?= test
+
+# Pull in the developer's private configuration overrides for items above
+-include Makefile.private
+
+# _______________________ Non-overridable configuration _______________________
+
+BUILD_DIR                = $(BUILD_BASE_DIR)/$(BUILD_TARGET)
+PLATFORMS_TREE          := support/make
+TARGETS_DIR             := $(PLATFORMS_TREE)/targets
+BOARDS_DIR              := $(PLATFORMS_TREE)/boards
+ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
+PHONY_GOALS             := all stage1 stage2 app combo clean
+TARGETLESS_GOALS        += clean
+UUID_APPLICATION        := 715b6875-cd42-451d-80b2-853ad6fe53e0
+
+VERSION_BIN   := $(shell printf "%02X" $(VERSION_MAJOR))$(shell printf "%02X" $(VERSION_MINOR))$(shell printf "%02X" $(VERSION_PATCH))
+VERSION_STR       := "$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)"
+SILABS_BL_TIMESTAMP     := $(shell date '+%s')
+
+SOURCES =
+
+# Pull in the grunt work
+include support/make/Makerules
+
+# Ensure "header.bin" does not exist in the project root dir. It must
+# live in the subtree for a give build configuration under "build/xyz".
+# Otherwise we risk including the header for a wrong platform.
+ifneq ("$(wildcard header.bin)","")
+  $(error "Found file [header.bin] in project root directory. Please remove it to avoid accidental header spoofing")
+endif
+
+$(call passVarToCpp,CFLAGS,VERSION_MAJOR)
+$(call passVarToCpp,CFLAGS,VERSION_MINOR)
+$(call passVarToCpp,CFLAGS,VERSION_PATCH)
+$(call passVarToCpp,CFLAGS,VERSION_STR)
+
+# Common source files for all targets
+SOURCES += thinnect.silabs_platform/rail_config.c \
+    thinnect.silabs_platform/retargetspi.c \
+    thinnect.silabs_platform/timer_emlib.c \
+    thinnect.device-signature/signature/DeviceSignature.c \
+    thinnect.device-signature/area/silabs/SignatureArea.c \
+    crc/crc.c \
+    $(SILABS_SDKDIR)/util/silicon_labs/silabs_core/queue/circular_queue.c \
+    $(SILABS_SDKDIR)/hardware/kit/common/drivers/retargetserial.c \
+    $(SILABS_SDKDIR)/hardware/kit/common/drivers/retargetio.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_system.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_core.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_emu.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_cmu.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_rmu.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_gpio.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_usart.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_ldma.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_msc.c \
+    $(SILABS_SDKDIR)/platform/emlib/src/em_timer.c \
+    $(SILABS_SDKDIR)/platform/radio/rail_lib/hal/hal_common.c
+
+INCLUDES += -Ithinnect.silabs_platform \
+    -Iprotocol \
+    -Ithinnect.device-signature/signature/ \
+    -Ithinnect.device-signature/area/ \
+    -Ithinnect.device-signature/area/file/ \
+    -Ithinnect.device-signature/test \
+    -Icrc \
+    -Irebane.headeredit/lib \
+    -I. \
+    -I$(SILABS_SDKDIR)/util/silicon_labs/silabs_core/queue \
+    -I$(SILABS_SDKDIR)/hardware/kit/common/drivers \
+    -I$(SILABS_SDKDIR)/platform/halconfig/inc/hal-config \
+    -I$(SILABS_SDKDIR)/platform/emlib/inc \
+    -I$(SILABS_SDKDIR)/platform/radio/rail_lib/hal \
+    -I$(SILABS_SDKDIR)/platform/radio/rail_lib/common \
+    -I$(SILABS_SDKDIR)/platform/radio/rail_lib/protocol/ieee802154 \
+    -I$(SILABS_SDKDIR)/platform/radio/rail_lib/plugin/pa-conversions
+
+all: stage1 stage2 bootloader app combo
+
+# _______________________________ Project rules _______________________________
+
+# A hack to ensure any change in any header triggers recompilation.
+# To be replaced by proper dependency generation when it makes sense.
+ALL_HEADERS_EVER := $(wildcard *.h crc/*/*.h protocol/*/*.h rebane.headeredit/*.h $(SILABS_SDKDIR)/*.h thinnect.device-signature/*/*.h thunnect.silabs_platforms/*/*.h)
+
+$(BUILD_DIR)/stage1.elf $(BUILD_DIR)/stage2.elf $(BUILD_DIR)/$(FILENAME_PREFIX).elf: $(ALL_HEADERS_EVER) Makefile | $(BUILD_DIR)
+
+# Build stage 1
+
+CFLAGS_STAGE1 += -DVTOR_START_LOCATION=$(STAGE1_START)
+SOURCES_STAGE1 += $(SOURCES) radio.c cm.c radioboot.c mtimer.c stage1.c
+
+$(BUILD_DIR)/stage1.elf: $(SOURCES_STAGE1)
+	$(call pInfo,Building [$@])
+	$(CC) $(CFLAGS) $(CFLAGS_STAGE1) $(INCLUDES) $(SOURCES_STAGE1) $(LDFLAGS) $(LDLIBS) -o $@
+
+$(BUILD_DIR)/stage1.bin: $(BUILD_DIR)/stage1.elf
+	$(call pInfo,Exporting BIN [$@])
+	$(OBJCOPY) --strip-all -O binary $< $@
+
+stage1: $(BUILD_DIR)/stage1.bin
+
+# Build stage 2
+
+CFLAGS_STAGE2 += -DVTOR_START_LOCATION=$(STAGE2_START) -Wl,--section-start=.text=$(STAGE2_START)
+SOURCES_STAGE2 += $(SOURCES) spi_flash.c flash.c cm.c rebane.headeredit/lib/header.c rebane.headeredit/lib/header_crc.c rebane.headeredit/lib/crc32.c stage2.c
+
+$(BUILD_DIR)/header.bin: | $(BUILD_DIR)
+	$(call pInfo,Creating headeredit block for bootloader [$@])
+	$(HEADEREDIT) -c -v softtype,0 -v bootaddr,$(BOOTLOADER_START) -v bootsizemax,$(BOOTLOADER_MAX_LEN) -v version,$(THINBOOT_VERSION) -v versionbin,$(THINBOOT_VERSION_BIN) -v uuid,$(UUID_BOARD) -v uuid2,$(UUID_PLATFORM) -v uuid3,$(UUID_APPLICATION) -v timestamp,$(THINBOOT_TIMESTAMP) -v size -v crc "$@"
+
+$(BUILD_DIR)/stage2.elf: $(SOURCES_STAGE2) $(BUILD_DIR)/header.bin
+	$(call pInfo,Building [$@])
+	$(CC) $(CFLAGS) $(CFLAGS_STAGE2) $(INCLUDES) $(SOURCES_STAGE2) $(LDFLAGS) $(LDLIBS) -o $@
+
+$(BUILD_DIR)/stage2.bin: $(BUILD_DIR)/stage2.elf
+	$(call pInfo,Exporting BIN [$@])
+	$(OBJCOPY) --strip-all -O binary "$<" "$@"
+	$(HEADEREDIT) -C -v size -v crc "$@"
+
+stage2: stage2.bin
+
+$(BUILD_DIR)/bootloader.bin: $(BUILD_DIR)/stage1.bin $(BUILD_DIR)/stage2.bin
+	$(call pInfo,Building [$@])
+	cp "$(BUILD_DIR)/stage1.bin" "$@"
+	dd if="$(BUILD_DIR)/stage2.bin" of="$@" bs=1 seek=$$(($(STAGE2_START))) conv=notrunc
+	chmod 755 "$@"
+
+# Build test application and test combo
+
+CFLAGS_TESTAPP += -DVTOR_START_LOCATION=$(APP_START) -Wl,--section-start=.text=$(APP_START)
+SOURCES_TESTAPP += $(SOURCES) app.c
+
+$(BUILD_DIR)/$(FILENAME_PREFIX).elf: $(SOURCES_TESTAPP)
+	$(call pInfo,Building [$@])
+	$(CC) $(CFLAGS) $(CFLAGS_TESTAPP) $(INCLUDES) $(SOURCES_TESTAPP) $(LDFLAGS) $(LDLIBS) -o $@
+
+$(BUILD_DIR)/$(FILENAME_PREFIX).bin: $(BUILD_DIR)/$(FILENAME_PREFIX).elf
+	$(call pInfo,Exporting BIN [$@])
+	$(OBJCOPY) --strip-all -O binary "$<" "$@.headerless"
+	$(HEADEREDIT) -c -v softtype,1 -v uuid,$(UUID_BOARD) -v size -v crc $(BUILD_DIR)/header-app.bin
+	cat "$@.headerless" $(BUILD_DIR)/header-app.bin > $@
+	$(HEADEREDIT) -C -v size -v crc $@
+
+app: $(BUILD_DIR)/$(FILENAME_PREFIX).bin
+
+$(BUILD_DIR)/combo.bin: $(BUILD_DIR)/bootloader.bin $(BUILD_DIR)/$(FILENAME_PREFIX).bin
+	$(call pInfo,Building [$@])
+	cp $(BUILD_DIR)/bootloader.bin $(BUILD_DIR)/combo.bin
+	dd if=$(BUILD_DIR)/$(FILENAME_PREFIX).bin of=$@ bs=1 seek=$$(($(APP_START))) conv=notrunc
+	chmod 755 $@
+
+combo: $(BUILD_DIR)/combo.bin
+
+# _______________________________ Utility rules ________________________________
+
+$(BUILD_DIR):
+	$(call pInfo,Creating [$(BUILD_DIR)])
+	@mkdir -p "$(BUILD_DIR)"
+
+clean:
+	$(call pInfo,Nuking everything in [$(BUILD_BASE_DIR)])
+	@-rm -rf "$(BUILD_BASE_DIR)"
+
+.PHONY: $(PHONY_GOALS)
