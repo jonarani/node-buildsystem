@@ -10,6 +10,7 @@ $ cp thinnect.buildsystem/make/Makefile.sample Makefile
 ```
 
 Edit Makefile and
+
 * Add your own sources (.c files) to variable SOURCES
 * Add your own include directories to variable INCLUDES
 * Add your header file locations to variable ALL_HEADERS_EVER
