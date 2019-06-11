@@ -1,11 +1,11 @@
 # Thinnect build system
 
-GNU Make based build system for embedded projects. 
+GNU Make based build system for embedded projects.
 
 ## Installation and usage
 
 ```
-$ git clone git@bitbucket.org:thinnect/buildsystem.git thinnect.buildsystem
+$ git submodule add git@bitbucket.org:thinnect/buildsystem.git thinnect.buildsystem
 $ cp thinnect.buildsystem/make/Makefile.sample Makefile
 ```
 

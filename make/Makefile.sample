@@ -4,11 +4,9 @@
 
 # _______________________ User overridable configuration _______________________
 
-include support/make/targets/fp1.target
-
 VERSION_MAJOR ?= 0
-VERSION_MINOR ?= 2
-VERSION_PATCH ?= 3
+VERSION_MINOR ?= 0
+VERSION_PATCH ?= 1
 
 HEADEREDIT              := headeredit
 
@@ -36,7 +34,7 @@ FILENAME_PREFIX         ?= test
 # _______________________ Non-overridable configuration _______________________
 
 BUILD_DIR                = $(BUILD_BASE_DIR)/$(BUILD_TARGET)
-PLATFORMS_TREE          := support/make
+PLATFORMS_TREE          := thinnect.buildsystem/make
 TARGETS_DIR             := $(PLATFORMS_TREE)/targets
 BOARDS_DIR              := $(PLATFORMS_TREE)/boards
 ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
@@ -51,7 +49,7 @@ SILABS_BL_TIMESTAMP     := $(shell date '+%s')
 SOURCES =
 
 # Pull in the grunt work
-include support/make/Makerules
+include $(PLATFORMS_TREE)/Makerules
 
 # Ensure "header.bin" does not exist in the project root dir. It must
 # live in the subtree for a give build configuration under "build/xyz".
