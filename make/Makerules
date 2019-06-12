@@ -24,6 +24,12 @@ BOARDS_DIR              := $(PLATFORMS_TREE)/boards
 ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
 JTAGS_DIR               := $(PLATFORMS_TREE)/jtags
 
+ifeq ($(RELEASE_BUILD),1)
+  CFLAGS += -DNDEBUG -Os
+else
+  CFLAGS += -g -O0
+endif
+
 # _______________________ Platform functions _______________________
 
 # Include a target definition

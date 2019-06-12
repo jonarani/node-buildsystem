@@ -16,12 +16,8 @@ DEFAULT_BUILD_TARGET    := all
 # Common build options
 CFLAGS                  += -Wall -std=c99 -specs=nano.specs -specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -fsingle-precision-constant -Wstrict-aliasing=0 -D__START=main -D__STARTUP_CLEAR_BSS -DVTOR_START_LOCATION=$(APP_START) -DLIBEXPORT=""
 
+# If set, disables asserts and debugging, enables optimization
 RELEASE_BUILD           ?= 1
-ifeq($(RELEASE_BUILD),1)
-    CFLAGS += -DNDEBUG -Os
-else
-    CFLAGS += -g -O0
-endif
 
 LDFLAGS                 += -nostartfiles -Wl,--gc-sections -Wl,--relax -Wl,-Map=$(@:.elf=.map),--cref -Wl,--wrap=atexit -Wl,--section-start=.text=$(APP_START)
 LDLIBS                  += -lgcc -lm -lnosys

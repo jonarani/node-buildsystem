@@ -1,4 +1,4 @@
-# Define a toolchain with which firmware is built.
+# Define the specific family of MCU architecture for which firmware is built.
 # This is the Silabs EFR32, Series 2 architecture, a.k.a. EFR32xG22
 
 # Pull in the common EFR32 architecture definition
