@@ -40,7 +40,7 @@ BOARDS_DIR              := $(PLATFORMS_TREE)/boards
 ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
 PHONY_GOALS             := all stage1 stage2 app combo clean
 TARGETLESS_GOALS        += clean
-UUID_APPLICATION        := 715b6875-cd42-451d-80b2-853ad6fe53e0
+UUID_APPLICATION        := 7a42b049-d311-4f0e-80fc-26b51cc81903
 
 VERSION_BIN   := $(shell printf "%02X" $(VERSION_MAJOR))$(shell printf "%02X" $(VERSION_MINOR))$(shell printf "%02X" $(VERSION_PATCH))
 VERSION_STR       := "$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)"
