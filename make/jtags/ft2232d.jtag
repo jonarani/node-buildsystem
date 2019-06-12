@@ -1,0 +1,37 @@
+# Define a programmer/JTAG adapter
+# This is Veiko's FT2232D based programmer
+# https://thinnect.atlassian.net/wiki/spaces/DEV/pages/1377337355/FT2232D+JTAG+Adapter
+
+# Default programmer
+PROGRAMMER_CONFIG       ?= /etc/openocd_interface_rebane.cfg
+PROGRAMMER_PARTNO       ?= target/efm32.cfg
+#PROGRAMMER_ID           ?= 0
+
+# Choose a programmer to use
+ifneq ($(PROGRAMMER_ARGUMENT),)
+  # Command line argument overrides all else
+  FTDI_JTAG_NUM := $(PROGRAMMER_ARGUMENT)
+else ifneq ($(FTDI_JTAG_NUM),)
+  # Environment variable FTDI_JTAG_NUM overrides programmer id
+  # Already set
+else ifneq ($(PROGRAMMER_ID),)
+  # Makefile.private settings are the fallback
+  FTDI_JTAG_NUM := $(PROGRAMMER_ID)
+else
+  $(call pInfo,Set programmer ID in environment variable FTDI_JTAG_NUM or variable PROGRAMMER_ID in Makefile.private to flash devices)
+endif
+
+$(call pDbg,Using programmer: $(FTDI_JTAG_NUM))
+export FTDI_JTAG_NUM
+
+install program: $(PROGRAM_IMAGE)
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR)" -c "reset run" -c "shutdown"
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
+
+
+reboot restart reset:
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {rst}" -c "sleep 1" -c "ftdi_mpsse_pins_init {rst}" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "reset run" -c "shutdown"
+
+.PHONY: install program reboot restart reset

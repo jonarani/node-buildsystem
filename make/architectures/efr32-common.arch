@@ -1,0 +1,13 @@
+# Define a toolchain with which firmware is built.
+# This is the Silabs EFR32 architecture (common parts for all series)
+
+# Set up the toolchain
+TOOLCHAIN               := arm-none-eabi-
+CC                      := $(TOOLCHAIN)gcc
+TC_OBJCOPY              := $(TOOLCHAIN)objcopy
+TC_SIZE                 := $(TOOLCHAIN)size
+TC_STRIP                := $(TOOLCHAIN)strip
+TC_SIZE                 := $(TOOLCHAIN)size
+
+# Define MCU architecture for the compiler
+CFLAGS                  += -mfloat-abi=soft -mthumb -mthumb-interwork

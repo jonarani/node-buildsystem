@@ -10,6 +10,12 @@ PDBG_AFFIX               := ---
 pDbg = $(if $(PRINT_DEBUG),$(info $(PDBG_AFFIX) $(1) $(PDBG_AFFIX)),)
 pInfo = $(if $(PRINT_INFO),$(info $(PINFO_AFFIX) $(1) $(PINFO_AFFIX)),)
 
+# _______________________ Variable definitions _______________________
+
+TARGETS_DIR             := $(PLATFORMS_TREE)/targets
+BOARDS_DIR              := $(PLATFORMS_TREE)/boards
+ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
+JTAGS_DIR               := $(PLATFORMS_TREE)/jtags
 
 # _______________________ Platform functions _______________________
 
@@ -38,6 +44,15 @@ includeArch = $(eval $(call includeArchDefine,$(1)))
 define includeArchDefine
 $(call pDbg,Including architecture definition [$(ARCHITECTURES_DIR)/$(1).arch])
 $(eval include $(ARCHITECTURES_DIR)/$(1).arch)
+endef
+
+# Include a JTAG adapter
+#   @param $(1) Name of the JTAG adapter file (without extension)
+#   @return Nothing
+includeJtag = $(eval $(call includeJtagDefine,$(1)))
+define includeJtagDefine
+$(call pDbg,Including JTAG adapter definition [$(JTAGS_DIR)/$(1).jtag])
+$(eval include $(JTAGS_DIR)/$(1).jtag)
 endef
 
 # Pass a make variable named $(1) to the C preprocessor by storing its
@@ -174,7 +189,7 @@ else ifneq ($(call isSupportedTarget,$(BUILD_TARGET)),)
   $(call pDbg,Goal $(BUILD_TARGET) is a build target)
   ifeq ($(CMD_WORD_COUNT),1)
     # make target - -
-    BUILD_ACTION := combo
+    BUILD_ACTION := $(DEFAULT_BUILD_TARGET)
     $(call pDbg,Action not specified. Picking default action [$(BUILD_ACTION)])
   else ifeq ($(CMD_WORD_COUNT),2)
     # make target action -

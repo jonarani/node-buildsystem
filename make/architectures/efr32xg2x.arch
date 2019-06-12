@@ -1,46 +1,7 @@
 # Define a toolchain with which firmware is built.
-
 # This is the Silabs EFR32, Series 2 architecture, a.k.a. EFR32xG22
 
-# Set up the toolchain
-TOOLCHAIN               := arm-none-eabi-
-CC                      := $(TOOLCHAIN)gcc
-OBJCOPY                 := $(TOOLCHAIN)objcopy
-SIZE                    := $(TOOLCHAIN)size
+# Pull in the common EFR32 architecture definition
+$(call includeArch,efr32-common)
 
-# Default programmer
-PROGRAMMER_CONFIG       ?= /etc/openocd_interface_rebane.cfg
-PROGRAMMER_PARTNO       ?= target/efm32.cfg
-#PROGRAMMER_ID           ?= 0
-
-# Choose a programmer to use
-ifneq ($(PROGRAMMER_ARGUMENT),)
-  # Command line argument overrides all else
-  FTDI_JTAG_NUM := $(PROGRAMMER_ARGUMENT)
-else ifneq ($(FTDI_JTAG_NUM),)
-  # Environment variable FTDI_JTAG_NUM overrides programmer id
-  # Already set
-else ifneq ($(PROGRAMMER_ID),)
-  # Makefile.private settings are the fallback
-  FTDI_JTAG_NUM := $(PROGRAMMER_ID)
-else
-  $(error Must define programmer ID either through environment variable FTDI_JTAG_NUM or setting PROGRAMMER_ID in Makefile.private)
-endif
-
-$(call pInfo,Using programmer: $(FTDI_JTAG_NUM))
-export FTDI_JTAG_NUM
-
-# Define MCU architecture for the compiler
-CFLAGS                  += -mcpu=cortex-m33 -mfloat-abi=soft -mthumb -mthumb-interwork
-
-install program:
-	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(FILENAME_PREFIX)-bootloader.bin 0" -c "reset run" -c "shutdown"
-	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
-
-
-reboot restart reset:
-	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {rst}" -c "sleep 1" -c "ftdi_mpsse_pins_init {rst}" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "reset run" -c "shutdown"
-
-.PHONY: install program reboot restart reset
+CFLAGS                  += -mcpu=cortex-m33
