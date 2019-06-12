@@ -4,4 +4,4 @@
 # Pull in the common EFR32 architecture definition
 $(call includeArch,efr32-common)
 
-CFLAGS                  += -mcpu=cortex-m4
+CFLAGS                  += -mcpu=cortex-m4 -mfloat-abi=soft

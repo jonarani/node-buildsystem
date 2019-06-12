@@ -10,4 +10,4 @@ TC_STRIP                := $(TOOLCHAIN)strip
 TC_SIZE                 := $(TOOLCHAIN)size
 
 # Define MCU architecture for the compiler
-CFLAGS                  += -mfloat-abi=soft -mthumb -mthumb-interwork
+CFLAGS                  += -mthumb -mthumb-interwork
