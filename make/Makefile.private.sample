@@ -20,6 +20,8 @@
 # Extra arguments for reset step on programmer
 #PROGRAMMER_RESET_ARGS   := --debug=3
 
+#RELEASE_BUILD           := 0
+
 # Append to the C preprocessor flags
 #CFLAGS                  += -O0
 
