@@ -10,6 +10,13 @@ PDBG_AFFIX               := ---
 pDbg = $(if $(PRINT_DEBUG),$(info $(PDBG_AFFIX) $(1) $(PDBG_AFFIX)),)
 pInfo = $(if $(PRINT_INFO),$(info $(PINFO_AFFIX) $(1) $(PINFO_AFFIX)),)
 
+# Only show command line if VERBOSE is set
+ifneq ($(PRINT_DEBUG),)
+  HIDE_CMD :=
+else
+  HIDE_CMD := @
+endif
+
 # _______________________ Variable definitions _______________________
 
 TARGETS_DIR             := $(PLATFORMS_TREE)/targets
@@ -243,6 +250,18 @@ help:
 .PHONY: $(BUILD_TARGET) $(BUILD_ACTION) $(BUILD_ACTION_ARGUMENTS) help
 
 TARGETLESS_GOALS        += help
+
+# Create list of objects as a tree under the build directory (dirs remain)
+# Assumes all .c files are present and accounted for in $(SOURCES)
+OBJECTS = $(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.o,$(SOURCES)))
+
+# Build each object file from its source. Add universal dependencies.
+# To reflect the directory tree of source files, the easiest solution is simply
+# calling mkdir each and every time an object is built. It's OK, it's cheap.
+$(BUILD_DIR)/%.o: %.c $(ALL_HEADERS_EVER) Makefile | $(BUILD_DIR)
+	$(call pInfo,Building [$@])
+	$(HIDE_CMD)mkdir -p "$(dir $@)"
+	$(HIDE_CMD)$(CC) $(CFLAGS) $(INCLUDES) -c -o $@ $<
 
 # _______________________ Define preprocessor constants _______________________
 
