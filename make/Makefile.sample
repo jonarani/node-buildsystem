@@ -12,31 +12,31 @@ VERSION_MINOR           ?= 0
 VERSION_PATCH           ?= 1
 
 # Common build options
-CFLAGS                  += -Wall -std=c99 -specs=nano.specs -specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -fsingle-precision-constant -Wstrict-aliasing=0 -D__START=main -D__STARTUP_CLEAR_BSS -DVTOR_START_LOCATION=$(APP_START) -DLIBEXPORT=""
+CFLAGS                  += -DBASE_LOG_LEVEL=0xFFFF -Wall -std=c99 -specs=nano.specs -specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -fsingle-precision-constant -Wstrict-aliasing=0 -D__START=main -D__STARTUP_CLEAR_BSS -DVTOR_START_LOCATION=$(APP_START) -DLIBEXPORT=""
+LDFLAGS                 += -nostartfiles -Wl,--gc-sections -Wl,--relax -Wl,-Map=$(@:.elf=.map),--cref -Wl,--wrap=atexit -Wl,--section-start=.text=$(APP_START)
+LDLIBS                  += -lgcc -lm -lnosys
+INCLUDES                += -Xassembler -Ilib
+
 
 # If set, disables asserts and debugging, enables optimization
 RELEASE_BUILD           ?= 1
 
-LDFLAGS                 += -nostartfiles -Wl,--gc-sections -Wl,--relax -Wl,-Map=$(@:.elf=.map),--cref -Wl,--wrap=atexit -Wl,--section-start=.text=$(APP_START)
-LDLIBS                  += -lgcc -lm -lnosys
-INCLUDES                += -Xassembler -I$(BUILD_DIR) -Ilib
-
 # Enable debug messages
-VERBOSE                  ?= 0
+VERBOSE                 ?= 0
 # Disable info messages
-#SILENT                   ?= 1
+#SILENT                  ?= 1
 
 # Destination for build results
-BUILD_BASE_DIR          := build
+BUILD_BASE_DIR          ?= build
 # Mark the default target
-DEFAULT_BUILD_TARGET    := all
+DEFAULT_BUILD_TARGET    ?= $(PROJECT_NAME)
 
 # Silabs SDK location and version
 SILABS_SDKDIR           ?= silabs.sdk/v2.5
 
-# Configure resulting image
-PROGRAM_IMAGE            = $(BUILD_DIR)/$(PROJECT_NAME).bin
-PROGRAM_DEST_ADDR        = $(APP_START)
+# Configure how image is programmed to target device
+PROGRAM_IMAGE           ?= $(BUILD_DIR)/$(PROJECT_NAME).bin
+PROGRAM_DEST_ADDR       ?= $(APP_START)
 
 # Other external tools
 HEADEREDIT              := headeredit
@@ -62,15 +62,9 @@ SOURCES =  \
 
 # Sources for dependencies and Silabs EMLIB, RAIL
 SOURCES += \
-    thinnect.device-signature/signature/DeviceSignature.c \
-    thinnect.device-signature/area/silabs/SignatureArea.c \
-    hal/retargetserial.c \
-    hal/retargetio.c \
-    prolab.motexml/lib/MLO.c \
-    prolab.motexml/lib/MLE.c \
-    prolab.motexml/lib/MLD.c \
-    prolab.motexml/lib/MLI.c \
     $(SILABS_SDKDIR)/util/silicon_labs/silabs_core/queue/circular_queue.c \
+    $(SILABS_SDKDIR)/hardware/kit/common/drivers/retargetserial.c \
+    $(SILABS_SDKDIR)/hardware/kit/common/drivers/retargetio.c \
     $(SILABS_SDKDIR)/platform/emlib/src/em_system.c \
     $(SILABS_SDKDIR)/platform/emlib/src/em_core.c \
     $(SILABS_SDKDIR)/platform/emlib/src/em_emu.c \
@@ -80,25 +74,22 @@ SOURCES += \
     $(SILABS_SDKDIR)/platform/emlib/src/em_usart.c \
     $(SILABS_SDKDIR)/platform/emlib/src/em_ldma.c \
     $(SILABS_SDKDIR)/platform/emlib/src/em_msc.c \
-    $(SILABS_SDKDIR)/platform/emlib/src/em_i2c.c \
-    $(SILABS_SDKDIR)/platform/emlib/src/em_wdog.c \
-    $(SILABS_SDKDIR)/platform/emlib/src/em_rtcc.c \
-    $(SILABS_SDKDIR)/platform/emlib/src/em_adc.c \
-    $(SILABS_SDKDIR)/platform/emdrv/rtcdrv/src/rtcdriver.c
+    $(SILABS_SDKDIR)/platform/emlib/src/em_timer.c \
+    $(SILABS_SDKDIR)/platform/radio/rail_lib/hal/hal_common.c \
+    submodule.thinnect.silabs_platform/rail_config.c \
+    submodule.thinnect.silabs_platform/retargetspi.c \
+    submodule.thinnect.silabs_platform/timer_emlib.c \
+    submodule.thinnect.device-signature/signature/DeviceSignature.c \
+    submodule.thinnect.device-signature/area/silabs/SignatureArea.c \
+    submodule.thinnect.silabs_platform/radio_basic.c \
+    submodule.thinnect.silabs_platform/radio_seqNum.c \
+    submodule.thinnect.lll/logging/loggers_ext.c \
+    submodule.thinnect.silabs_platform/mtimer.c \
+    $(wildcard submodule.thinnect.mist-comm/am/*.c) \
+    $(wildcard submodule.thinnect.mist-comm/api/*.c)
 
 # All include directories
-INCLUDES += -Ithinnect.silabs_platform \
-    -Iprotocol \
-    -Ithinnect.device-signature/signature/ \
-    -Ithinnect.device-signature/area/ \
-    -Ithinnect.device-signature/area/file/ \
-    -Icrc \
-    -Ihal \
-    -Irebane.headeredit/lib \
-    -I. \
-    -Ithinnect.tos-deviceannouncement/tos/types \
-    -Iprolab.dt-types \
-    -Iprolab.motexml/lib \
+INCLUDES += \
     -I$(SILABS_SDKDIR)/util/silicon_labs/silabs_core/queue \
     -I$(SILABS_SDKDIR)/hardware/kit/common/drivers \
     -I$(SILABS_SDKDIR)/platform/halconfig/inc/hal-config \
@@ -107,15 +98,25 @@ INCLUDES += -Ithinnect.silabs_platform \
     -I$(SILABS_SDKDIR)/platform/radio/rail_lib/common \
     -I$(SILABS_SDKDIR)/platform/radio/rail_lib/protocol/ieee802154 \
     -I$(SILABS_SDKDIR)/platform/radio/rail_lib/plugin/pa-conversions \
-    -I$(SILABS_SDKDIR)/platform/emdrv/rtcdrv/inc \
-    -I$(SILABS_SDKDIR)/platform/emdrv/rtcdrv/config \
-    -I$(SILABS_SDKDIR)/platform/emdrv/common/inc \
+    -I. \
+    -I$(BUILD_DIR) \
+    -Isubmodule.thinnect.silabs_platform \
+    -Isubmodule.thinnect.device-signature/signature/ \
+    -Isubmodule.thinnect.device-signature/area/ \
+    -Isubmodule.thinnect.device-signature/area/file/ \
+    -Isubmodule.thinnect.device-signature/test \
+    -Isubmodule.thinnect.mist-comm/include \
+    -Isubmodule.thinnect.mist-comm/include/compat \
+    -Isubmodule.thinnect.lll/logging \
+    -Isubmodule.thinnect.mist-comm/include \
+    -Isubmodule.thinnect.mist-comm/include/compat \
+    -Isubmodule.thinnect.mist-comm/test
 
 # Pull in the grunt work
 include $(PLATFORMS_TREE)/Makerules
 
 # Ensure "header.bin" does not exist in the project root dir. It must
-# live in the subtree for a give build configuration under "build/xyz".
+# live in the subtree for a given build configuration under "build/xyz".
 # Otherwise we risk including the header for a wrong platform.
 ifneq ("$(wildcard header.bin)","")
   $(error "Found file [header.bin] in project root directory. Please remove it to avoid accidental header spoofing")
@@ -137,11 +138,11 @@ $(OBJECTS): $(BUILD_DIR)/header.bin
 
 $(BUILD_DIR)/$(PROJECT_NAME).elf: Makefile | $(BUILD_DIR)
 
-$(BUILD_DIR)/header.bin: | $(BUILD_DIR)
-	$(call pInfo,Creating headeredit block for application [$@])
+$(BUILD_DIR)/header.bin: Makefile | $(BUILD_DIR)
+	$(call pInfo,Creating application headeredit block [$@])
 	$(HEADEREDIT) -c -v softtype,1 -v firmaddr,$(APP_START) -v firmsizemax,$(APP_MAX_LEN) -v version,$(VERSION_STR) -v versionbin,$(VERSION_BIN) -v uuid,$(UUID_BOARD) -v uuid2,$(UUID_PLATFORM) -v uuid3,$(UUID_APPLICATION) -v timestamp,$(BUILD_TIMESTAMP) -v name,$(PROJECT_NAME) -v size -v crc "$@"
 
-$(BUILD_DIR)/$(PROJECT_NAME).elf: $(BUILD_DIR)/header.bin $(OBJECTS)
+$(BUILD_DIR)/$(PROJECT_NAME).elf: $(OBJECTS)
 	$(call pInfo,Linking [$@])
 	$(HIDE_CMD)$(CC) $(CFLAGS) $(INCLUDES) $(OBJECTS) $(LDLIBS) $(LDFLAGS) -o $@
 
@@ -150,6 +151,8 @@ $(BUILD_DIR)/$(PROJECT_NAME).bin: $(BUILD_DIR)/$(PROJECT_NAME).elf
 	$(HIDE_CMD)$(TC_SIZE) --format=Berkeley $<
 	$(HIDE_CMD)$(TC_OBJCOPY) --strip-all -O binary "$<" "$@"
 	$(HIDE_CMD)$(HEADEREDIT) -C -v size -v crc $@
+
+$(PROJECT_NAME): $(BUILD_DIR)/$(PROJECT_NAME).bin
 
 $(BUILD_DIR):
 	$(call pInfo,Creating [$@])
