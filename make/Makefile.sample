@@ -139,7 +139,7 @@ all: $(BUILD_DIR)/$(FILENAME_PREFIX).bin
 # dependency to all objects.
 $(OBJECTS): $(BUILD_DIR)/header.bin
 
-$(BUILD_DIR)/$(FILENAME_PREFIX).elf: $(ALL_HEADERS_EVER) Makefile | $(BUILD_DIR)
+$(BUILD_DIR)/$(FILENAME_PREFIX).elf: Makefile | $(BUILD_DIR)
 
 $(BUILD_DIR)/header.bin: | $(BUILD_DIR)
 	$(call pInfo,Creating headeredit block for application [$@])
