@@ -9,15 +9,15 @@ PROGRAMMER_PARTNO       ?= target/efm32.cfg
 # Choose a programmer to use
 ifneq ($(PROGRAMMER_ARGUMENT),)
   # Command line argument overrides all else
-  FTDI_JTAG_NUM := $(PROGRAMMER_ARGUMENT)
-else ifeq ($(FTDI_JTAG_NUM),)
-  # Environment variable FTDI_JTAG_NUM not set anywhere
-  $(call pInfo,Set programmer ID in environment variable FTDI_JTAG_NUM or variable FTDI_JTAG_NUM in Makefile.private to flash devices)
+  FTDI_ID := $(PROGRAMMER_ARGUMENT)
+else ifeq ($(FTDI_ID),)
+  # Environment variable FTDI_ID not set anywhere
+  $(call pInfo,Set programmer ID in environment variable FTDI_ID or variable FTDI_ID in Makefile.private to flash devices)
 endif
 
-$(call pDbg,Using programmer: $(FTDI_JTAG_NUM))
+$(call pDbg,Using programmer: $(FTDI_ID))
 # Ensure the variable reaches spawned shells
-export FTDI_JTAG_NUM
+export FTDI_ID
 
 install program: $(PROGRAM_IMAGE)
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"

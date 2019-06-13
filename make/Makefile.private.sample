@@ -14,7 +14,7 @@
 #VERBOSE                 := yes
 
 # Set the default programmer to Thinnect Silabs programmer, device no 12
-#FTDI_JTAG_NUM           := 12
+#FTDI_ID                 := 12
 # Extra arguments for install step on programmer
 #PROGRAMMER_INSTALL_ARGS := --debug=3
 # Extra arguments for reset step on programmer
