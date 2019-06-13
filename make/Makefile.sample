@@ -1,17 +1,15 @@
 # This is the main makefile
+#
 # Command-line interface is loosely copied from the TinyOS make system:
 # http://tinyos.stanford.edu/tinyos-wiki/index.php/TinyOS_Toolchain
 
 # _______________________ User overridable configuration _______________________
 
+PROJECT_NAME            ?= my_bleeding_edge_project
+
 VERSION_MAJOR           ?= 0
 VERSION_MINOR           ?= 0
 VERSION_PATCH           ?= 1
-
-# Destination for build results
-BUILD_BASE_DIR          := build
-# Mark the default target
-DEFAULT_BUILD_TARGET    := all
 
 # Common build options
 CFLAGS                  += -Wall -std=c99 -specs=nano.specs -specs=nosys.specs -ffunction-sections -fdata-sections -ffreestanding -fsingle-precision-constant -Wstrict-aliasing=0 -D__START=main -D__STARTUP_CLEAR_BSS -DVTOR_START_LOCATION=$(APP_START) -DLIBEXPORT=""
@@ -28,12 +26,16 @@ VERBOSE                  ?= 0
 # Disable info messages
 #SILENT                   ?= 1
 
+# Destination for build results
+BUILD_BASE_DIR          := build
+# Mark the default target
+DEFAULT_BUILD_TARGET    := all
+
 # Silabs SDK location and version
 SILABS_SDKDIR           ?= silabs.sdk/v2.5
-FILENAME_PREFIX         ?= my_bleeding_edge_project
 
 # Configure resulting image
-PROGRAM_IMAGE            = $(BUILD_DIR)/$(FILENAME_PREFIX).bin
+PROGRAM_IMAGE            = $(BUILD_DIR)/$(PROJECT_NAME).bin
 PROGRAM_DEST_ADDR        = $(APP_START)
 
 # Other external tools
@@ -46,23 +48,17 @@ HEADEREDIT              := headeredit
 
 BUILD_DIR                = $(BUILD_BASE_DIR)/$(BUILD_TARGET)
 PLATFORMS_TREE          := thinnect.buildsystem/make
-PHONY_GOALS             := all stage1 stage2 app combo clean
+PHONY_GOALS             := all clean
 TARGETLESS_GOALS        += clean
-UUID_APPLICATION        := 7a42b049-d311-4f0e-80fc-26b51cc81903
+UUID_APPLICATION        := 00000000-0000-0000-0000-000000000000
 
 VERSION_BIN             := $(shell printf "%02X" $(VERSION_MAJOR))$(shell printf "%02X" $(VERSION_MINOR))$(shell printf "%02X" $(VERSION_PATCH))
 VERSION_STR             := "$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_PATCH)"
 BUILD_TIMESTAMP         := $(shell date '+%s')
 
-# A temp hack to ensure any change in nearby header files triggers recompilation.
-# To be replaced by proper dependency generation when it makes sense.
-ALL_HEADERS_EVER := $(wildcard *.h ./**/*.h)
-
-# List all source files in the project.
-# NB! Do update this
+# List all source files in the project
 SOURCES =  \
-    main.c \
-    some_useful_source_file.c
+    my_bleeding_edge_project_main.c
 
 # Sources for dependencies and Silabs EMLIB, RAIL
 SOURCES += \
@@ -132,24 +128,24 @@ $(call passVarToCpp,CFLAGS,VERSION_STR)
 
 # _______________________________ Project rules _______________________________
 
-all: $(BUILD_DIR)/$(FILENAME_PREFIX).bin
+all: $(BUILD_DIR)/$(PROJECT_NAME).bin
 
 # Only the object file calling INCLUDE_BINARY_FILE depends on file header.bin,
 # but instead of manually mapping this dependency, it's simpler to add it as a
 # dependency to all objects.
 $(OBJECTS): $(BUILD_DIR)/header.bin
 
-$(BUILD_DIR)/$(FILENAME_PREFIX).elf: Makefile | $(BUILD_DIR)
+$(BUILD_DIR)/$(PROJECT_NAME).elf: Makefile | $(BUILD_DIR)
 
 $(BUILD_DIR)/header.bin: | $(BUILD_DIR)
 	$(call pInfo,Creating headeredit block for application [$@])
-	$(HEADEREDIT) -c -v softtype,1 -v firmaddr,$(APP_START) -v firmsizemax,$(APP_MAX_LEN) -v version,$(VERSION_STR) -v versionbin,$(VERSION_BIN) -v uuid,$(UUID_BOARD) -v uuid2,$(UUID_PLATFORM) -v uuid3,$(UUID_APPLICATION) -v timestamp,$(BUILD_TIMESTAMP) -v name,$(FILENAME_PREFIX) -v size -v crc "$@"
+	$(HEADEREDIT) -c -v softtype,1 -v firmaddr,$(APP_START) -v firmsizemax,$(APP_MAX_LEN) -v version,$(VERSION_STR) -v versionbin,$(VERSION_BIN) -v uuid,$(UUID_BOARD) -v uuid2,$(UUID_PLATFORM) -v uuid3,$(UUID_APPLICATION) -v timestamp,$(BUILD_TIMESTAMP) -v name,$(PROJECT_NAME) -v size -v crc "$@"
 
-$(BUILD_DIR)/$(FILENAME_PREFIX).elf: $(BUILD_DIR)/header.bin $(OBJECTS)
+$(BUILD_DIR)/$(PROJECT_NAME).elf: $(BUILD_DIR)/header.bin $(OBJECTS)
 	$(call pInfo,Linking [$@])
 	$(HIDE_CMD)$(CC) $(CFLAGS) $(INCLUDES) $(OBJECTS) $(LDLIBS) $(LDFLAGS) -o $@
 
-$(BUILD_DIR)/$(FILENAME_PREFIX).bin: $(BUILD_DIR)/$(FILENAME_PREFIX).elf
+$(BUILD_DIR)/$(PROJECT_NAME).bin: $(BUILD_DIR)/$(PROJECT_NAME).elf
 	$(call pInfo,Exporting [$@])
 	$(HIDE_CMD)$(TC_SIZE) --format=Berkeley $<
 	$(HIDE_CMD)$(TC_OBJCOPY) --strip-all -O binary "$<" "$@"
