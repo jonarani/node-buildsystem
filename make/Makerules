@@ -19,11 +19,39 @@ endif
 
 # _______________________ Variable definitions _______________________
 
-TARGETS_DIR             := $(PLATFORMS_TREE)/targets
-BOARDS_DIR              := $(PLATFORMS_TREE)/boards
-ARCHITECTURES_DIR       := $(PLATFORMS_TREE)/architectures
-JTAGS_DIR               := $(PLATFORMS_TREE)/jtags
+TARGETS_DIRS             := $(addsuffix /targets,$(PLATFORMS_DIRS))
+BOARDS_DIRS              := $(addsuffix /boards,$(PLATFORMS_DIRS))
+ARCHITECTURES_DIRS       := $(addsuffix /architectures,$(PLATFORMS_DIRS))
+JTAGS_DIRS               := $(addsuffix /jtags,$(PLATFORMS_DIRS))
 
+# The includable targets, boards, architectures and JTAGs can live in multiple
+# directories. It's our task to find them all and create a map of names to files
+
+# Generate list of valid targets
+SUPPORTED_TARGET_FILES   := $(foreach ITER_DIR,$(TARGETS_DIRS),$(wildcard $(ITER_DIR)/*.target))
+SUPPORTED_TARGET_NAMES   := $(notdir $(basename $(SUPPORTED_TARGET_FILES)))
+# Generate a dictionary of target names to file locations
+$(foreach ITER_FILE,$(SUPPORTED_TARGET_FILES),$(eval TARGET_NAME_TO_FILE_$(notdir $(basename $(ITER_FILE))) := $(ITER_FILE)))
+
+# Generate list of valid boards
+SUPPORTED_BOARD_FILES   := $(foreach ITER_DIR,$(BOARDS_DIRS),$(wildcard $(ITER_DIR)/*.board))
+SUPPORTED_BOARD_NAMES   := $(notdir $(basename $(SUPPORTED_BOARD_FILES)))
+# Generate a dictionary of board names to file locations
+$(foreach ITER_FILE,$(SUPPORTED_BOARD_FILES),$(eval BOARD_NAME_TO_FILE_$(notdir $(basename $(ITER_FILE))) := $(ITER_FILE)))
+
+# Generate list of valid architectures
+SUPPORTED_ARCHITECTURE_FILES   := $(foreach ITER_DIR,$(ARCHITECTURES_DIRS),$(wildcard $(ITER_DIR)/*.arch))
+SUPPORTED_ARCHITECTURE_NAMES   := $(notdir $(basename $(SUPPORTED_ARCHITECTURE_FILES)))
+# Generate a dictionary of architecture names to file locations
+$(foreach ITER_FILE,$(SUPPORTED_ARCHITECTURE_FILES),$(eval ARCHITECTURE_NAME_TO_FILE_$(notdir $(basename $(ITER_FILE))) := $(ITER_FILE)))
+
+# Generate list of valid JTAGs
+SUPPORTED_JTAG_FILES   := $(foreach ITER_DIR,$(JTAGS_DIRS),$(wildcard $(ITER_DIR)/*.jtag))
+SUPPORTED_JTAG_NAMES   := $(notdir $(basename $(SUPPORTED_JTAG_FILES)))
+# Generate a dictionary of adapter names to file locations
+$(foreach ITER_FILE,$(SUPPORTED_JTAG_FILES),$(eval JTAG_NAME_TO_FILE_$(notdir $(basename $(ITER_FILE))) := $(ITER_FILE)))
+
+# Switch between release and debug builds
 ifeq ($(RELEASE_BUILD),1)
   CFLAGS += -DNDEBUG -Os
 else
@@ -33,39 +61,39 @@ endif
 # _______________________ Platform functions _______________________
 
 # Include a target definition
-#   @param $(1) Name of the target file (without extension)
+#   @param $1 Name of the target file (without directories or file extension)
 #   @return Nothing
-includeTarget = $(eval $(call includeTargetDefine,$(1)))
+includeTarget = $(eval $(call includeTargetDefine,$1))
 define includeTargetDefine
-$(call pDbg,Including target definition [$(TARGETS_DIR)/$(1).target])
-$(eval include $(TARGETS_DIR)/$(1).target)
+$(call pDbg,Including target [$1] definition at [$(TARGET_NAME_TO_FILE_$1)])
+$(eval include $(TARGET_NAME_TO_FILE_$1))
 endef
 
 # Include a board definition
-#   @param $(1) Name of the board file (without extension)
+#   @param $1 Name of the board file (without directories or file extension)
 #   @return Nothing
-includeBoard = $(eval $(call includeBoardDefine,$(1)))
+includeBoard = $(eval $(call includeBoardDefine,$1))
 define includeBoardDefine
-$(call pDbg,Including board definition [$(BOARDS_DIR)/$(1).board])
-$(eval include $(BOARDS_DIR)/$(1).board)
+$(call pDbg,Including board [$1] definition at [$(BOARD_NAME_TO_FILE_$1)])
+$(eval include $(BOARD_NAME_TO_FILE_$1))
 endef
 
 # Include an architecture definition
-#   @param $(1) Name of the architecture file (without extension)
+#   @param $1 Name of the architecture file (without directories or file extension)
 #   @return Nothing
-includeArch = $(eval $(call includeArchDefine,$(1)))
+includeArch = $(eval $(call includeArchDefine,$1))
 define includeArchDefine
-$(call pDbg,Including architecture definition [$(ARCHITECTURES_DIR)/$(1).arch])
-$(eval include $(ARCHITECTURES_DIR)/$(1).arch)
+$(call pDbg,Including architecture [$1] definition at [$(ARCHITECTURE_NAME_TO_FILE_$1)])
+$(eval include $(ARCHITECTURE_NAME_TO_FILE_$1))
 endef
 
 # Include a JTAG adapter
-#   @param $(1) Name of the JTAG adapter file (without extension)
+#   @param $1 Name of the JTAG adapter file (without directories or file extension)
 #   @return Nothing
-includeJtag = $(eval $(call includeJtagDefine,$(1)))
+includeJtag = $(eval $(call includeJtagDefine,$1))
 define includeJtagDefine
-$(call pDbg,Including JTAG adapter definition [$(JTAGS_DIR)/$(1).jtag])
-$(eval include $(JTAGS_DIR)/$(1).jtag)
+$(call pDbg,Including JTAG adapter [$1] definition at [$(JTAG_NAME_TO_FILE_$1)])
+$(eval include $(JTAG_NAME_TO_FILE_$1))
 endef
 
 # Pass a make variable named $(1) to the C preprocessor by storing its
@@ -94,9 +122,6 @@ uuidToCstr = $(shell echo $(subst -,,$(1)) | $(SED) 's/.\{2\}/\\x&/g')
 
 
 # _______________________ Command line processing _______________________
-
-# Generate list of valid build targets
-SUPPORTED_TARGET_NAMES   := $(patsubst $(TARGETS_DIR)/%.target,%,$(wildcard $(TARGETS_DIR)/*.target))
 
 # Basic validation for entire command line
 #   @param $(1) Command line to be validated
@@ -164,6 +189,9 @@ CMD_WORD_COUNT           := $(call countCommandWords,$(CMD_LINE))
 
 # Debug the crap out of the command line
 $(call pDbg,Supported targets [$(SUPPORTED_TARGET_NAMES)])
+$(call pDbg,Supported boards [$(SUPPORTED_BOARD_NAMES)])
+$(call pDbg,Supported architectures [$(SUPPORTED_ARCHITECTURE_NAMES)])
+$(call pDbg,Supported JTAGs [$(SUPPORTED_JTAG_NAMES)])
 $(call pDbg,Targetless targets [$(TARGETLESS_GOALS)])
 $(call pDbg,Command line [$(CMD_LINE)])
 $(call pDbg,Words [$(CMD_WORD_COUNT)])

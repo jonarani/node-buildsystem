@@ -47,7 +47,8 @@ HEADEREDIT              := headeredit
 # _______________________ Non-overridable configuration _______________________
 
 BUILD_DIR                = $(BUILD_BASE_DIR)/$(BUILD_TARGET)
-PLATFORMS_TREE          := thinnect.buildsystem/make
+BUILDSYSTEM_DIR         := thinnect.buildsystem/make
+PLATFORMS_DIRS          := $(BUILDSYSTEM_DIR)
 PHONY_GOALS             := all clean
 TARGETLESS_GOALS        += clean
 UUID_APPLICATION        := 00000000-0000-0000-0000-000000000000
@@ -113,7 +114,7 @@ INCLUDES += \
     -Isubmodule.thinnect.mist-comm/test
 
 # Pull in the grunt work
-include $(PLATFORMS_TREE)/Makerules
+include $(BUILDSYSTEM_DIR)/Makerules
 
 # Ensure "header.bin" does not exist in the project root dir. It must
 # live in the subtree for a given build configuration under "build/xyz".
