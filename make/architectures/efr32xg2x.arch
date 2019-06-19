@@ -4,4 +4,7 @@
 # Pull in the common EFR32 architecture definition
 $(call includeArch,efr32-common)
 
+MCU_SIGDATA_ADDR         = 0xfe00000
+MCU_SIGDATA_SIZE         = 1024
+
 CFLAGS                  += -mcpu=cortex-m33 -mfloat-abi=hard
