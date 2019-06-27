@@ -15,4 +15,4 @@ reboot restart reset:
 install-sig: $(PROGRAM_SIGDATA)
 	commander flash $(PROGRAM_SIGDATA) --address $(MCU_SIGDATA_ADDR) --device $(MCU_PART)
 
-.PHONY: install program reboot restart reset erase
+.PHONY: install program reboot restart reset erase install-sig
