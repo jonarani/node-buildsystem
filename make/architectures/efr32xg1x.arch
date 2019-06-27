@@ -7,4 +7,4 @@ $(call includeArch,efr32-common)
 MCU_SIGDATA_ADDR         = 0xfe00000
 MCU_SIGDATA_SIZE         = 2048
 
-CFLAGS                  += -mcpu=cortex-m4 -mfloat-abi=soft
+CFLAGS                  += -mcpu=cortex-m4 -mfloat-abi=soft  -DEFR32_SERIES1
