@@ -5,8 +5,8 @@ GNU Make based build system for embedded projects.
 ## Installation and usage
 
 ```
-$ git submodule add git@bitbucket.org:thinnect/buildsystem.git thinnect.buildsystem
-$ cp thinnect.buildsystem/make/Makefile.sample Makefile
+$ git submodule add git@github.com:thinnect/node-buildsystem.git zoo/thinnect.node-buildsystem
+$ cp zoo/thinnect.node-buildsystem/make/Makefile.sample Makefile
 ```
 
 Edit Makefile and
