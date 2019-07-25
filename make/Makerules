@@ -6,6 +6,7 @@ PRINT_INFO               := $(if $(filter $(strip $(SILENT)),1 yes Yes YES true 
 PRINT_DEBUG              := $(if $(and $(filter $(PRINT_INFO),yes),$(filter $(strip $(VERBOSE)),1 yes Yes YES true True TRUE)),yes,)
 PINFO_AFFIX              := ===
 PDBG_AFFIX               := ---
+SED                      ?= sed
 
 pDbg = $(if $(PRINT_DEBUG),$(info $(PDBG_AFFIX) $(1) $(PDBG_AFFIX)),)
 pInfo = $(if $(PRINT_INFO),$(info $(PINFO_AFFIX) $(1) $(PINFO_AFFIX)),)
@@ -118,7 +119,7 @@ endef
 # Convert a canonical UUID to a C string representation of raw bytes
 #   @param $(1) Canonical UUID (nnnnnnnn-nnnn-nnnn-nnnn-nnnnnnnnnnnn)
 #   @return C-style string with each character as a raw hex byte ("\xNN\xNN...\xNN")
-uuidToCstr = $(shell echo $(subst -,,$(1)) | $(SED) 's/.\{2\}/\\x&/g')
+uuidToCstr = "$(shell echo $(subst -,,$(1)) | $(SED) 's/.\{2\}/\\x&/g')"
 
 
 # _______________________ Command line processing _______________________
