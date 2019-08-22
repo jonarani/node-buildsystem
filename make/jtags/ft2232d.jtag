@@ -4,7 +4,10 @@
 
 # Default programmer
 PROGRAMMER_CONFIG       ?= /etc/openocd_interface_rebane.cfg
+# Default parts conf
 PROGRAMMER_PARTNO       ?= target/efm32.cfg
+# Default transport - swd or jtag
+PROGRAMMER_TRANSPORT    ?= swd
 
 # Choose a programmer to use
 ifneq ($(PROGRAMMER_ARGUMENT),)
@@ -21,26 +24,32 @@ export FTDI_ID
 
 install program: $(PROGRAM_IMAGE)
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"
-	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR)" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR)" -c "reset run" -c "shutdown"
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
+
+erase:
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {rst}" -c "sleep 1" -c "ftdi_mpsse_pins_init {rst}" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "flash erase_sector 0 0 last" -c "shutdown"
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
 
 reboot restart reset:
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {rst}" -c "sleep 1" -c "ftdi_mpsse_pins_init {rst}" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
-	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select swd" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "reset run" -c "shutdown"
+	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
 
 install-sig: $(PROGRAM_SIGDATA)
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f target/efm32.cfg -c "init" -c "reset halt" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c "shutdown"
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE041F8" -c "mww 0x400e000c 0x01" -c "mww 0x400e0018 0xFFFFFFFE" -c "mww 0x400e000c 0x08" -c "mww 0x400e0008 0x00" -c "mdw 0x0fe041f8" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE041F8" -c "mww 0x400e000c 0x01" -c "mww 0x400e0018 0xFFFFFFFE" -c "mww 0x400e000c 0x08" -c "mww 0x400e0008 0x00" -c "mdw 0x0fe041f8" -c "reset run" -c "shutdown"
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
 
 erase-sig:
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {tms}" -c "sleep 1" -c "ftdi_mpsse_pins_init {tms}"
 	#unlock userdata area protection
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
 	#erase userdata area
-	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE00000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE00000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c "shutdown"
 	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
 
 .PHONY: install program reboot restart reset install-sig erase-sig
