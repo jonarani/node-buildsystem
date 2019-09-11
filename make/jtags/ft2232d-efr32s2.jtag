@@ -1,0 +1,31 @@
+# Targets for the FT2232D programmer and SiLabs EFR32 Series 2 chips
+# Included from ft2232d.jtag
+
+install program: $(PROGRAM_IMAGE)
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR) $(PROGRAMMER_VERIFY)" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+erase:
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c init -c "reset halt" -c "flash erase_sector 0 0 last" -c ftdi_rebind_on_exit -c ftdi_rebind_on_exit -c shutdown
+
+reboot restart reset:
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c init -c "reset halt" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+install-sig: $(PROGRAM_SIGDATA)
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	# Unlock and erase userdata
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "mww 0x4C000050 20" -c "mww 0x4C000000 0x430A0000" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0xDE1E7EAD" -c "sleep 1000" -c "reset halt" -c shutdown
+	# Write new userdata
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c "sleep 100" -c ftdi_rebind_on_exit -c shutdown
+
+erase-sig:
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	# Unlock and erase usedata
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "mww 0x4C000050 20" -c "mww 0x4C000000 0x430A0000" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0xDE1E7EAD" -c "sleep 1000" -c "reset run" -c ftdi_rebind_on_exit -c shutdown

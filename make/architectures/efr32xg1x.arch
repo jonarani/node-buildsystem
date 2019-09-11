@@ -1,6 +1,8 @@
 # Define the specific family of MCU architecture for which firmware is built.
 # This is the Silabs EFR32, series 1 architecture, a.k.a. EFR32xG12
 
+EFR32_SERIES := 1
+
 # Pull in the common EFR32 architecture definition
 $(call includeArch,efr32-common)
 
