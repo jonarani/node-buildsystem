@@ -1,0 +1,27 @@
+# Targets for the FT2232D programmer and SiLabs EFR32 Series 1 chips
+# Included from ft2232d.jtag
+
+install program: $(PROGRAM_IMAGE)
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR) $(PROGRAMMER_VERIFY)" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+erase:
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "flash erase_sector 0 0 last" -c ftdi_rebind_on_exit -c shutdown
+
+reboot restart reset:
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+install-sig: $(PROGRAM_SIGDATA)
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c shutdown
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c shutdown
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE041F8" -c "mww 0x400e000c 0x01" -c "mww 0x400e0018 0xFFFFFFFE" -c "mww 0x400e000c 0x08" -c "mww 0x400e0008 0x00" -c "mdw 0x0fe041f8" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+erase-sig:
+	$(OCD_HW_RST_CMD)
+	#unlock userdata area protection
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c shutdown
+	#erase userdata area
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE00000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
