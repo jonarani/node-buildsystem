@@ -12,3 +12,7 @@ TC_SIZE                 := $(TOOLCHAIN)size
 
 # Define common MCU architecture flags for the compiler
 CFLAGS                  += -mthumb -mthumb-interwork
+
+# +10dBm should be supported by all 2.4GHz Series 1 and 2 EFR32 chips
+DEFAULT_RFPOWER_DBM ?= 10
+$(call passVarToCpp,CFLAGS,DEFAULT_RFPOWER_DBM)

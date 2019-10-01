@@ -322,6 +322,7 @@ $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d Makefile | $(BUILD_DIR)
 # endif
 
 $(call passVarToCpp,CFLAGS,BOOTLOADER_START)
+$(call passVarToCpp,CFLAGS,BOOTLOADER_MAX_LEN)
 $(call passVarToCpp,CFLAGS,STAGE1_START)
 $(call passVarToCpp,CFLAGS,STAGE1_MAX_LEN)
 $(call passVarToCpp,CFLAGS,STAGE2_START)
