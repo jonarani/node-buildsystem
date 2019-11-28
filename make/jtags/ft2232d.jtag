@@ -28,7 +28,7 @@ $(call pDbg,Using programmer: $(FTDI_ID))
 export FTDI_ID
 
 # Wiggle the reset pin to reset the chip, get debug access for a short while, if pins used for other things
-OCD_HW_RST_CMD := openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -c "adapter_khz 1000" -c init -c "ftdi_set_signal nSRST 1" -c "sleep 1000" -c "ftdi_set_signal nSRST 0" -c "sleep 1000" -c shutdown
+OCD_HW_RST_CMD := openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_RESET_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -c "adapter_khz 1000" -c init -c "ftdi_set_signal nSRST 0" -c "sleep 1000" -c "ftdi_set_signal nSRST 1" -c "sleep 1000" -c shutdown
 
 # HW reset somehow blocks swd sometimes, need to just poke OpenOCD before doing actual work
 OCD_DUMMY_CMD := openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c init -c shutdown || true

@@ -25,3 +25,11 @@ erase-sig:
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c shutdown
 	#erase userdata area
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE00000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+recover:
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -c "adapter_khz 100" -c init -c "ftdi_set_signal nSRST 0" -c "sleep 1000" -c "ftdi_set_signal nSRST 1" -c shutdown
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c init -c "poll off" -c "ftdi_set_signal nSRST 0; sleep 10; ftdi_set_signal nSRST 1; efm32.dap dpreg 8 0xFF000000; efm32.dap apreg 0 0x0C 0x00000001; efm32.dap dpreg 8 0xFF000000; efm32.dap apreg 0 0x04 0xCFACC118; efm32.dap dpreg 8 0xFF000000; efm32.dap apreg 0 0x00 0x00000001; efm32.dap dpreg 8 0xFF000000; efm32.dap apreg 0 0x08; efm32.dap dpreg 0x0c" -c shutdown
+	sleep 5
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -c "adapter_khz 100" -c init -c "ftdi_set_signal nSRST 0" -c "sleep 1000" -c "ftdi_set_signal nSRST 1" -c shutdown
