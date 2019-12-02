@@ -250,7 +250,7 @@ else ifneq ($(call isSupportedTarget,$(BUILD_TARGET)),)
     BUILD_ACTION_ARGUMENTS := $(call getActionArgs,$(CMD_LINE))
     $(call pDbg,Action specified: [$(BUILD_ACTION)] argument specified: [$(BUILD_ACTION_ARGUMENTS)])
     # Match the action with its argument
-    ifneq ($(filter install program reboot reset,$(BUILD_ACTION)),)
+    ifneq ($(filter install program reboot reset erase recover,$(BUILD_ACTION)),)
       PROGRAMMER_ARGUMENT := $(BUILD_ACTION_ARGUMENTS)
     else
       $(error Unknown argument [$(BUILD_ACTION_ARGUMENTS)] or action [$(BUILD_ACTION)])
