@@ -1,6 +1,9 @@
 # Targets for the FT2232D programmer and SiLabs EFR32 Series 2 chips
 # Included from ft2232d.jtag
 
+# Least common size for a user data page (8KiB for series 1, 1KiB for series 2)
+PROGRAM_SIGDATA_READ_LENGTH := 0x400
+
 install program: $(PROGRAM_IMAGE)
 	$(OCD_HW_RST_CMD)
 	$(OCD_DUMMY_CMD)
@@ -23,6 +26,14 @@ install-sig: $(PROGRAM_SIGDATA)
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "mww 0x4C000050 20" -c "mww 0x4C000000 0x430A0000" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0xDE1E7EAD" -c "sleep 1000" -c "reset halt" -c shutdown
 	# Write new userdata
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c "sleep 100" -c ftdi_rebind_on_exit -c shutdown
+
+# NB! Output signature file name must be set in variable PROGRAM_SIGDATA_FILENAME
+read-sig:
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	# Read signature into file $(PROGRAM_SIGDATA_FILENAME)
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "flash read_bank 1 $(PROGRAM_SIGDATA_FILENAME) 0 $(PROGRAM_SIGDATA_READ_LENGTH)" -c "reset run" -c "sleep 100" -c ftdi_rebind_on_exit -c shutdown
+
 
 erase-sig:
 	$(OCD_HW_RST_CMD)
