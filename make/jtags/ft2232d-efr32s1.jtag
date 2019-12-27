@@ -1,6 +1,9 @@
 # Targets for the FT2232D programmer and SiLabs EFR32 Series 1 chips
 # Included from ft2232d.jtag
 
+# Least common size for a user data page (8KiB for series 1, 1KiB for series 2)
+PROGRAM_SIGDATA_READ_LENGTH := 0x400
+
 install program: $(PROGRAM_IMAGE)
 	$(OCD_HW_RST_CMD)
 	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_IMAGE) $(PROGRAM_DEST_ADDR) $(PROGRAMMER_VERIFY)" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
@@ -17,6 +20,12 @@ install-sig: $(PROGRAM_SIGDATA)
 	$(OCD_HW_RST_CMD)
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c shutdown
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "flash write_bank 1 $(PROGRAM_SIGDATA) 0" -c "reset run" -c shutdown
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE041F8" -c "mww 0x400e000c 0x01" -c "mww 0x400e0018 0xFFFFFFFE" -c "mww 0x400e000c 0x08" -c "mww 0x400e0008 0x00" -c "mdw 0x0fe041f8" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+read-sig:
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE04000" -c "mww 0x400e000c 0x01" -c "mww 0x400e000c 0x02" -c "reset run" -c shutdown
+	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "flash read_bank 1 $(PROGRAM_SIGDATA_OUT) 0 $(PROGRAM_SIGDATA_READ_LENGTH)" -c "reset run" -c shutdown
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f target/efm32.cfg -c "init" -c "reset halt" -c "mww 0x400e0008 0x01" -c "mww 0x400e0010 0x0FE041F8" -c "mww 0x400e000c 0x01" -c "mww 0x400e0018 0xFFFFFFFE" -c "mww 0x400e000c 0x08" -c "mww 0x400e0008 0x00" -c "mdw 0x0fe041f8" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
 
 erase-sig:
