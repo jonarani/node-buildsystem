@@ -1,8 +1,8 @@
 # Targets for the FT2232D programmer and SiLabs EFR32 Series 2 chips
 # Included from ft2232d.jtag
 
-# Read 1 user data page as signature (8KiB for series 1, 1KiB for series 2)
-PROGRAM_SIGDATA_READ_LENGTH := 0x400
+# Read entire User Data page as signature (1KiB for series 2)
+PROGRAM_SIGDATA_READ_LENGTH := 0x0400
 
 install program: $(PROGRAM_IMAGE)
 	$(OCD_HW_RST_CMD)
