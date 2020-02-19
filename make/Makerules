@@ -128,6 +128,10 @@ endef
 #   @return C-style string with each character as a raw hex byte ("\xNN\xNN...\xNN")
 uuidToCstr = "$(shell echo $(subst -,,$(1)) | $(SED) 's/.\{2\}/\\x&/g')"
 
+# Convert string to a C representation of raw bytes
+#   @param $(1) 16 bytes in format (nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn)
+#   @return C-style string with each character as a raw hex byte ("\xNN\xNN...\xNN")
+strToCstr = "$(shell echo $(1) | $(SED) 's/.\{2\}/\\x&/g')"
 
 # _______________________ Command line processing _______________________
 
@@ -250,7 +254,7 @@ else ifneq ($(call isSupportedTarget,$(BUILD_TARGET)),)
     BUILD_ACTION_ARGUMENTS := $(call getActionArgs,$(CMD_LINE))
     $(call pDbg,Action specified: [$(BUILD_ACTION)] argument specified: [$(BUILD_ACTION_ARGUMENTS)])
     # Match the action with its argument
-    ifneq ($(filter install program reboot reset erase recover,$(BUILD_ACTION)),)
+    ifneq ($(filter install program reboot restart reset erase recover install-sig read-sig erase-sig,$(BUILD_ACTION)),)
       PROGRAMMER_ARGUMENT := $(BUILD_ACTION_ARGUMENTS)
     else
       $(error Unknown argument [$(BUILD_ACTION_ARGUMENTS)] or action [$(BUILD_ACTION)])
