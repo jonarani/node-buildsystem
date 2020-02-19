@@ -10,4 +10,9 @@ MCU_SIGDATA_ADDR         = 0xfe00000
 MCU_SIGDATA_SIZE         = 1024
 MCU_ARCH                 = efr32xg2x
 
-CFLAGS                  += -mcpu=cortex-m33 -mfloat-abi=hard -DEFR32_SERIES2
+CFLAGS                  += -mcpu=cortex-m33
+CFLAGS                  += -mfloat-abi=hard
+CFLAGS                  += -mfpu=fpv5-sp-d16
+CFLAGS                  += -mcmse
+
+CFLAGS                  += -DEFR32_SERIES2
