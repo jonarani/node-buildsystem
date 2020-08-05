@@ -1,21 +1,25 @@
 # Define a programmer/JTAG adapter/software
 # This allows flashing through the SiLabs Simplicity Studio commander application
 
+# Commander does part autodetect and it seems to work better if not given
+# too much information about the target part beforehand. The only exception
+# being "recover", which fails for Series 2 when not told about the device series.
+
 # Only one programmer can currently be connected to the PC
 
 install program: $(PROGRAM_IMAGE)
-	commander flash $(PROGRAM_IMAGE) --device $(MCU_PART)
+	commander flash $(PROGRAM_IMAGE) --device EFR32 # $(MCU_PART)
 
 erase:
-	commander device masserase --device $(MCU_PART)
+	commander device masserase --device EFR32 # $(MCU_PART)
 
 recover:
-	commander device recover --device $(MCU_PART)
+	commander device recover --device $(MCU_FAMILY)
 
 reboot restart reset:
-	commander device reset --device $(MCU_PART)
+	commander device reset --device EFR32 # $(MCU_PART)
 
 install-sig: $(PROGRAM_SIGDATA)
-	commander flash $(PROGRAM_SIGDATA) --address $(MCU_SIGDATA_ADDR) --device $(MCU_PART)
+	commander flash $(PROGRAM_SIGDATA) --address $(MCU_SIGDATA_ADDR) --device EFR32 # $(MCU_PART)
 
 .PHONY: install program erase recover reboot restart reset install-sig
