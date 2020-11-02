@@ -39,3 +39,8 @@ erase-sig:
 	$(OCD_DUMMY_CMD)
 	# Unlock and erase usedata
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP) -c init -c "reset halt" -c "mww 0x40030040 0" -c "mww 0x4C000050 20" -c "mww 0x4C000000 0x430A0000" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0" -c "mww 0x4C000000 0xDE1E7EAD" -c "sleep 1000" -c "reset run" -c ftdi_rebind_on_exit -c shutdown
+
+install-fhead: $(PROGRAM_FHEADER_IMG)
+	$(OCD_HW_RST_CMD)
+	$(OCD_DUMMY_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c $(PROGRAMMER_WORK_SETUP)  -c "init" -c "reset halt" -c "program $(PROGRAM_FHEADER) $(FHEADER_DEST_ADDR) $(PROGRAMMER_VERIFY)" -c "reset run" -c ftdi_rebind_on_exit -c shutdown

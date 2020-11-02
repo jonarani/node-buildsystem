@@ -44,3 +44,7 @@ recover:
 	sleep 5
 	$(OCD_DUMMY_CMD)
 	openocd -f $(PROGRAMMER_CONFIG) -c "transport select swd" -c "adapter_khz 100" -c init -c "ftdi_set_signal nSRST 0" -c "sleep 1000" -c "ftdi_set_signal nSRST 1" -c shutdown
+
+install-fhead: $(PROGRAM_FHEADER_IMG)
+	$(OCD_HW_RST_CMD)
+	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_FHEADER) $(FHEADER_DEST_ADDR) $(PROGRAMMER_VERIFY)" -c "reset run" -c ftdi_rebind_on_exit -c shutdown

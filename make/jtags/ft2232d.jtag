@@ -44,9 +44,4 @@ else
   endif
 endif
 
-install-fhead: $(PROGRAM_FHEADER_IMG)
-	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode mpsse" -c "ftdi_mpsse_set_clock 6000000" -c "ftdi_mpsse_pins_init {} {$(PROGRAMMER_RST_PIN)}" -c "sleep 1" -c "ftdi_mpsse_pins_init {$(PROGRAMMER_RST_PIN)}"
-	openocd -f $(PROGRAMMER_CONFIG) $(PROGRAMMER_INSTALL_ARGS) -c "transport select $(PROGRAMMER_TRANSPORT)" -f $(PROGRAMMER_PARTNO) -c "init" -c "reset halt" -c "program $(PROGRAM_FHEADER) $(FHEADER_DEST_ADDR)" -c "reset run" -c "shutdown"
-	ftdiutil -f $(PROGRAMMER_CONFIG) -c "init" -c "ftdi_set_bitmode reset" -c "ftdi_rebind_on_exit"
-
-.PHONY: install program reboot restart reset install-sig erase-sig
+.PHONY: install program reboot restart reset install-sig erase-sig install-fhead
