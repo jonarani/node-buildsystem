@@ -12,12 +12,16 @@ MCU_ARCH                 = efr32xg1x
 
 CFLAGS                  += -DEFR32_SERIES1
 CFLAGS                  += -mcpu=cortex-m4
+CXXFLAGS                += -DEFR32_SERIES1
+CXXFLAGS                += -mcpu=cortex-m4
 
 FPU_SOFT ?= 0 # Set to 1 to use float-abi=soft and M3 ports for FreeRTOS
 ifeq ($(FPU_SOFT),1)
     CFLAGS              += -mfloat-abi=soft
+    CXXFLAGS            += -mfloat-abi=soft
 else
     CFLAGS              += -mfpu=fpv4-sp-d16 -mfloat-abi=softfp -DARM_MATH_CM4=1 -D__FPU_PRESENT=1U
+    CXXFLAGS            += -mfpu=fpv4-sp-d16 -mfloat-abi=softfp -DARM_MATH_CM4=1 -D__FPU_PRESENT=1U
     LDLIBS              += $(SILABS_SDKDIR)/platform/CMSIS/Lib/GCC/libarm_cortexM4l_math.a
 endif
 

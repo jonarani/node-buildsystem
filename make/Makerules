@@ -62,8 +62,10 @@ $(foreach ITER_FILE,$(SUPPORTED_JTAG_FILES),$(eval JTAG_NAME_TO_FILE_$(notdir $(
 # Switch between release and debug builds
 ifeq ($(RELEASE_BUILD),1)
   CFLAGS += -DNDEBUG -Os
+  CXXFLAGS += -DNDEBUG -Os
 else
   CFLAGS += -g -O0
+  CXXFLAGS += -g -O0
 endif
 
 # _______________________ Platform functions _______________________
@@ -299,7 +301,9 @@ TARGETLESS_GOALS        += help
 
 # Create list of dependency files. Automatic dependency generation from
 # http://make.mad-scientist.net/papers/advanced-auto-dependency-generation/
-DEPFILES = $(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.d,$(SOURCES)))
+#DEPFILES = $(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.d,$(SOURCES)))
+DEPFILES = $(addprefix $(BUILD_DIR)/,$(filter %.d,$(patsubst %.cc,%.d,$(CPP_SOURCES)) \
+           $(patsubst %.c,%.d,$(SOURCES)) $(patsubst %.c,%.d,$(CPP_SOURCES)) ))
 
 $(DEPFILES):
 
@@ -307,7 +311,11 @@ include $(wildcard $(DEPFILES))
 
 # Create list of objects as a tree under the build directory (dirs remain)
 # Assumes all .c files are present and accounted for in $(SOURCES)
-OBJECTS = $(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.o,$(SOURCES)))
+#OBJECTS = $(addprefix $(BUILD_DIR)/,$(patsubst %.c,%.o,$(SOURCES)))
+
+# https://stackoverflow.com/questions/33740270/makefile-patsubst-multiple-expressions
+OBJECTS = $(addprefix $(BUILD_DIR)/,$(filter %.o,$(patsubst %.cc,%.o,$(CPP_SOURCES)) \
+          $(patsubst %.c,%.o,$(SOURCES)) $(patsubst %.c,%.o,$(CPP_SOURCES))))
 
 # Build each object file from its source. Add universal dependencies.
 # To reflect the directory tree of source files, the easiest solution is simply
@@ -316,6 +324,11 @@ $(BUILD_DIR)/%.o: %.c $(BUILD_DIR)/%.d Makefile | $(BUILD_DIR)
 	$(call pInfo,Building [$@])
 	$(HIDE_CMD)mkdir -p "$(dir $@)"
 	$(HIDE_CMD)$(CC) $(CFLAGS) $(INCLUDES) -MT $@ -MMD -MF $(@:.o=.d) -c -o $@ $<
+
+$(BUILD_DIR)/%.o: %.cc $(BUILD_DIR)/%.d Makefile | $(BUILD_DIR)
+	$(call pInfo,Building [$@])
+	$(HIDE_CMD)mkdir -p "$(dir $@)"
+	$(HIDE_CMD)$(CXX) $(CXXFLAGS) $(INCLUDES) -MT $@ -MMD -MF $(@:.o=.d) -c -o $@ $<
 
 # _______________________ Define preprocessor constants _______________________
 

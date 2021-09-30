@@ -5,6 +5,7 @@
 # Set up the toolchain
 TOOLCHAIN               := arm-none-eabi-
 CC                      := $(TOOLCHAIN)gcc
+CXX                     := $(TOOLCHAIN)g++
 TC_OBJCOPY              := $(TOOLCHAIN)objcopy
 TC_SIZE                 := $(TOOLCHAIN)size
 TC_STRIP                := $(TOOLCHAIN)strip
@@ -12,6 +13,7 @@ TC_SIZE                 := $(TOOLCHAIN)size
 
 # Define common MCU architecture flags for the compiler
 CFLAGS                  += -mthumb -mthumb-interwork
+CXXFLAGS                += -mthumb -mthumb-interwork
 
 # +10dBm should be supported by all 2.4GHz Series 1 and 2 EFR32 chips
 DEFAULT_RFPOWER_DBM ?= 10
